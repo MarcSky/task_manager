@@ -18,7 +18,7 @@ Author Gogohia Levan, 1995 year
 
 //---------------------------------------------------------------------------
 //! Macro to find the top of a stack given its size and top address
-#define TOP_OF_STACK(x, y)		(uchar*) ( ((byte)x) + (y-1) )
+#define TOP_OF_STACK(x, y)		(uchar*) ( ((ubyte)x) + (y-1) )
 //! Push a value y to the stack pointer x and decrement the stack pointer
 #define PUSH_TO_STACK(x, y)		*x = y; x--;
 

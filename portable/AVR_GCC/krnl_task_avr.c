@@ -63,13 +63,13 @@ void task_initstack (task_t * task_struct)
 
 void task_start_sheld(void)
 {
-	current_task = NULL
+	current_task = NULL;
 	timer_config(); //config timer1
-	timer_start();  //start timer1
 	task_run(); //task_run
 	shedule_set_state(true);//enable sheduler
-	task_switch(); //go in sheduler
-	Task_RestoreContext(); //get context for task
+	timer_start();  //start timer1
+	/*task_switch(); //go in sheduler
+	Task_RestoreContext(); //get context for task*/
 	
 }
 
