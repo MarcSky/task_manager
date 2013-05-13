@@ -64,8 +64,8 @@ void task_initstack (task_t * task_struct)
 void task_start_sheld(void)
 {
 	current_task = NULL
-	krnlt_config(); //config timer1
-	krnlt_start();  //start timer1
+	timer_config(); //config timer1
+	timer_start();  //start timer1
 	task_run(); //task_run
 	shedule_set_state(true);//enable sheduler
 	task_switch(); //go in sheduler
