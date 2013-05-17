@@ -4,9 +4,10 @@ GNU GPL v2 license
 Task Manager
 Author Gogohia Levan, 1995 year
 */
-
+#include <avr\io.h>
+#include <avr\interrupt.h>
 #include "krnl_task_avr.h"
-#include "task.h"
+#include "krnl_timer_avr.h"
 
 task_t * current_task;
 
@@ -83,13 +84,13 @@ void task_yield ( void )
 	ASM("ret"); //The output from the func
 }
 
-ISR(RTOS_RUN)
+ISR(TIMER1_COMPA_vect)
 {
-	bool state_sheduler;
+	base_t state_sheduler;
 	state_sheduler = sheduler_get_state();
 	if(state_sheduler)
 	{
 		task_yield();
-		ASM("reti");//The output from the interrupt
+		//ASM("reti");//The output from the interrupt
 	}
 }

@@ -7,7 +7,7 @@ Author Gogohia Levan, 1995 year
 
 #ifndef KRNL_TASK_AVR_H
 #define KRNL_TASK_AVR_H
-#define RTOS_RUN TIMER1_COMPA_vect
+#include  "kernel/sysmacro.h"
 
 #define ASM(x)		asm volatile(x);
 //! Status register define - map to 0x003F
@@ -21,6 +21,9 @@ Author Gogohia Levan, 1995 year
 #define TOP_OF_STACK(x, y)		(uchar*) ( ((ubyte)x) + (y-1) )
 //! Push a value y to the stack pointer x and decrement the stack pointer
 #define PUSH_TO_STACK(x, y)		*x = y; x--;
+
+void task_start_sheld(void);
+void task_yield ( void ) __attribute__ ( ( naked ) );
 
 //---------------------------------------------------------------------------
 //! Save the context of the task
@@ -116,19 +119,15 @@ ASM("pop r0");
 
 #define ENABLE_INTS()		ASM("sei");
 #define DISABLE_INTS()		ASM("cli");
-
 //Enter in the critical section (save status register, disable interrupts 
 inline void CS_ENTER( void )
 {
-	volatile uchar x;
-	x = _SFR_IO8(SR_)
 	DISABLE_INTS();
 }
 
 //Exit critical section - load status register and enable interrupts
 inline void CS_EXIT ( void ) 
 {
-	_SFR_IO8(SR_) = x;
 	ENABLE_INTS();
 }
 

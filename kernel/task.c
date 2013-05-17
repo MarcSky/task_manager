@@ -6,10 +6,19 @@ Author Gogohia Levan, 1995 year
 */
 
 #include "task.h"
-
+//#include "portable/task_manager.h"
+//#include "portable/krnl_task_avr.h"
+//#include "portable/krnl_timer_avr.h"
+#include <string.h>
 //base_t - base type: for AVR - char, for ARM  - long :D
 volatile base_t pid = 0; //count of proccess
-volatile bool shedule = false; //state sheduler
+volatile base_t shedule = false; //state sheduler
+
+typedef struct task_idle_s
+{
+	struct task_t idle;
+	ubyte stack[DEFAULT_STACK];
+} task_idle_s;
 
 extern task_t * current_task; //current_task
 task_t * head_task;           //head
@@ -28,8 +37,8 @@ void task_run (void)
 	CS_ENTER();
 	task_init();
 	//The kernel must perform what ever task!
-	task_create(&(task_idle.idle), (func_p)task_idle, "task_idle", (word*)(task_idle.stack), DEFAULT_STACK);
-	cS_EXIT();
+	//task_create(&(task_idle_s.idle), my_idle_task, "task_idle", (word*)(task_idle_s.stack), DEFAULT_STACK);
+	CS_EXIT();
 }
 
 void task_ready (task_t * task_struct)
@@ -43,39 +52,40 @@ void task_ready (task_t * task_struct)
 	}
 }
 
-base_t task_create(task_t * tast_struct, func_p func_task, const uchar * name, word * stack_point, byte size_stack)
+base_t task_create(task_t * now_task, func_p func_task, char name[MAX_TASK_NAME], word * stack_point, byte size_stack)
 {
+	task_t * task_struct = now_task;
 	//Create a task! The main part of the manager! :D
-	if (func_task == NULL || task_struct  == NULL) return BAD;
+	if (!func_task || !task_struct) return BAD;
 	
-	if(pid > 255) return BAD; // now max count of task - 255
+	if(task_count() > 255) return BAD; // now max count of task - 255
 	
 	CS_ENTER(); //critical section start
 		
-	if(strlen(name) >= max_task_name) //The buffer overflow is bad!
+	if(strlen(name) >= MAX_TASK_NAME) //The buffer overflow is bad!
 	{
-		task_struct -> name = "Default_name";
+		//task_struct -> taskName = "Default_name";
 	}
 	
 	task_struct -> taskFunc = func_task; //func_task
-	task_struct -> taskName = name;      //name
+	//task_struct -> taskName = name;      //name
 	task_struct -> taskPid = pid;        //pid
 	task_struct -> taskSizeStack = size_stack; //size_stack
 	task_struct -> taskStack = stack_point;//stack_point for this task
-	task_struct -> taskTopStack = (word*)STACK(task_struct, size_stack); // init stack for AVR, this is standart stack, i find him in avr lib for winavr
+	task_struct -> taskTopStack = (word*)TOP_OF_STACK(task_struct, size_stack); // init stack for AVR, this is standart stack, i find him in avr lib for winavr
 	task_struct -> taskSleep = 0; //time for sleep
-	task_struct -> taskState = READY; //state this task
+	task_struct -> taskState = TASK_READY; //state this task
 	task_struct -> next_task = NULL; //next task doesn't exist
 	task_initstack(task_struct); //init stack for our task
 	
-	if (current_task==NULL) //If we do not have task, but it's impossible, becouse we have task_idle, But the need for security check!
+	if (!current_task) //If we do not have task, but it's impossible, becouse we have task_idle, But the need for security check!
 	{  
 		current_task = task_struct;
 	}
 	
-	if (current_task!=NULL) //if not first :D
+	if (current_task) //if not first :D
 	{
-		current_task->next = task_struct;		
+		current_task -> next_task = task_struct;		
 	}
 	
 	task_ready(task_struct); //write our task in head and/or tail
@@ -91,10 +101,10 @@ inline void task_tick( void ) //This function is enabled in the interrupt. It is
 	task_t * end = tail_task;
 	while(start!=end)
 	{
-		if(start -> taskState == SLEEP && start-> taskSleep!=0)
+		if(start -> taskState == TASK_SLEEP && start-> taskSleep!=0)
 		{
 			start -> taskSleep--;
-			if(start->taskSleep == 0) {start->taskState=READY;}
+			if(start->taskSleep == 0) {start->taskState = TASK_READY;}
 			start=start->next_task;
 		}
 	}
@@ -104,7 +114,7 @@ base_t task_sleep (uword time) //task_sleep
 {   //Sleep
 	if(time >= MAX_TASK_SLEEP) return BAD; //max time for sleep  65535 tick or ~65 secound for AVR, if 1sec = 1000 tick for TIMER 16 bit
 	CS_ENTER();
-		current_task->taskState = SLEEP;
+		current_task->taskState = TASK_SLEEP;
 		current_task->taskSleep = time;
 	CS_EXIT();
 	
@@ -115,7 +125,7 @@ base_t task_sleep (uword time) //task_sleep
 
 base_t task_delete (task_t * task_struct)
 {  
-	if(task_struct == NULL || task_struct == task_idle) return BAD;
+	if(task_struct == NULL /*|| task_struct == task_idle_s*/) return BAD;
 	
 	CS_ENTER();
 	//delete task
@@ -135,7 +145,7 @@ base_t task_delete (task_t * task_struct)
 //I am a little unsure of the correct operation of the scheduler, but I think that it works well.
 void task_switch ( void ) //My Sheduler
 {
-	static task_t * start = head_task;
+	task_t * start = head_task;
 	task_t * end   = tail_task;
 		
 	if(shedule)
@@ -161,9 +171,9 @@ void task_switch ( void ) //My Sheduler
 				(current_task->taskFunc)(); // starting function of task
 				while(start!=end)
 				{
-					if(start->taskState==RUNNING && start->taskFunc!=task_idle)
+					if(start->taskState==TASK_RUNNING && start->taskFunc != my_idle_task)
 					{
-						start -> taskState = READY;
+						start -> taskState = TASK_READY;
 						start -> taskSleep = 0;
 						start =  start -> next_task;
 					}
@@ -175,11 +185,11 @@ void task_switch ( void ) //My Sheduler
 		{
 			while(start!=end)
 			{
-				if(start->taskState == READY && start -> taskFunc != task_idle)
+				if(start->taskState == TASK_READY && start -> taskFunc != my_idle_task)
 				{
 					current_task = start;
 					start = start -> next_task;
-					current_task -> taskState = RUNNING;
+					current_task -> taskState = TASK_RUNNING;
 					(current_task->taskFunc)(); // starting function of task
 					//break;
 				}
@@ -192,7 +202,7 @@ void task_switch ( void ) //My Sheduler
 		return;
 	}
 }
-inline void task_idle ( void * pthis)
+void my_idle_task ( void )
 {
 	uchar i = 0;
 	i++;
@@ -223,7 +233,7 @@ base_t task_stop (task_t * task_struct)
 	if(task_struct == NULL) return BAD;
 	
 	CS_ENTER();
-		task_struct -> taskState = BLOCKED;
+		task_struct -> taskState = TASK_BLOCKED;
 	CS_EXIT();
 	
 	return OK;
@@ -233,8 +243,8 @@ base_t task_start (task_t * task_struct)
 {	//start our task
 	if(task_struct == NULL) return BAD;
 	CS_ENTER();
-		task_struct -> taskState = READY;
-	cS_EXIT();
+		task_struct -> taskState = TASK_READY;
+	CS_EXIT();
 	
 	return OK;
 }
@@ -275,19 +285,19 @@ base_t task_state (task_t * task_struct)
 	}
 }
 
-void shedule_set_state (bool state)
+void shedule_set_state (base_t state)
 {
 	shedule = state;
 }
 
-bool shedule_get_state (void)
+base_t shedule_get_state (void)
 {
 	return shedule;
 }
 
-bool shedule_disable (void)
+base_t shedule_disable (void)
 {
-	bool data; 
+	base_t data; 
 	CS_ENTER();
 	data = shedule_get_state();
 	shedule_set_state(false);

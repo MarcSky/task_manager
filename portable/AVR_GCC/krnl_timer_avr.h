@@ -7,9 +7,11 @@ Author Gogohia Levan, 1995 year
 
 #ifndef KRNL_TIMER_AVR_H
 #define KRNL_TIMER_AVR_H
-#define RTOS_RUN TIMER1_OVF_COMP
-#defune SYSTEM_FREQ 16000000UL
+#include "task_manager.h"
+
+#define SYSTEM_FREQ 16000000UL
 #define TICK_FREQ 1000
+#define PRESC 64
 
 void timer_config(void); 
 void timer_start(void); 
