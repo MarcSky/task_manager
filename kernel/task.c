@@ -9,16 +9,26 @@ Author Gogohia Levan, 1995 year
 //#include "portable/task_manager.h"
 //#include "portable/krnl_task_avr.h"
 //#include "portable/krnl_timer_avr.h"
-#include <string.h>
+//#include <string.h>
 //base_t - base type: for AVR - char, for ARM  - long :D
 volatile base_t pid = 0; //count of proccess
 volatile base_t shedule = false; //state sheduler
 
-typedef struct task_idle_s
+typedef struct 
 {
-	struct task_t idle;
+	task_t idle;
 	ubyte stack[DEFAULT_STACK];
 } task_idle_s;
+
+task_idle_s my_task;
+
+void my_idle_task ( void )
+{
+	uchar i = 0;
+	i++;
+	if(i>=255) i = 0;
+}
+
 
 extern task_t * current_task; //current_task
 task_t * head_task;           //head
@@ -37,13 +47,13 @@ void task_run (void)
 	CS_ENTER();
 	task_init();
 	//The kernel must perform what ever task!
-	//task_create(&(task_idle_s.idle), my_idle_task, "task_idle", (word*)(task_idle_s.stack), DEFAULT_STACK);
+	task_create(&(my_task.idle), my_idle_task, (word*)(my_task.stack), DEFAULT_STACK);
 	CS_EXIT();
 }
 
 void task_ready (task_t * task_struct)
 {   //Add our task in the tail or head
-	if(head_task == NULL) {
+	if(!head_task) {
 		head_task = task_struct;
 		tail_task = task_struct;
 	} else {
@@ -52,7 +62,7 @@ void task_ready (task_t * task_struct)
 	}
 }
 
-base_t task_create(task_t * now_task, func_p func_task, char name[MAX_TASK_NAME], word * stack_point, byte size_stack)
+base_t task_create(task_t * now_task, func_p func_task, word * stack_point, byte size_stack)
 {
 	task_t * task_struct = now_task;
 	//Create a task! The main part of the manager! :D
@@ -61,14 +71,13 @@ base_t task_create(task_t * now_task, func_p func_task, char name[MAX_TASK_NAME]
 	if(task_count() > 255) return BAD; // now max count of task - 255
 	
 	CS_ENTER(); //critical section start
-		
-	if(strlen(name) >= MAX_TASK_NAME) //The buffer overflow is bad!
-	{
-		//task_struct -> taskName = "Default_name";
-	}
 	
+/*	if(strlen(name) >= MAX_TASK_NAME) //The buffer overflow is bad!
+	{
+		//task_struct -> taskName = name; //name
+	}
+	*/
 	task_struct -> taskFunc = func_task; //func_task
-	//task_struct -> taskName = name;      //name
 	task_struct -> taskPid = pid;        //pid
 	task_struct -> taskSizeStack = size_stack; //size_stack
 	task_struct -> taskStack = stack_point;//stack_point for this task
@@ -95,13 +104,13 @@ base_t task_create(task_t * now_task, func_p func_task, char name[MAX_TASK_NAME]
 	return OK;
 }
 
-inline void task_tick( void ) //This function is enabled in the interrupt. It is necessary to count the ticks to interrupt for sleeping tasks
+void task_tick( void ) //This function is enabled in the interrupt. It is necessary to count the ticks to interrupt for sleeping tasks
 {
 	task_t * start = head_task;
 	task_t * end = tail_task;
 	while(start!=end)
 	{
-		if(start -> taskState == TASK_SLEEP && start-> taskSleep!=0)
+		if(start -> taskState == TASK_SLEEP && start -> taskSleep !=0 )
 		{
 			start -> taskSleep--;
 			if(start->taskSleep == 0) {start->taskState = TASK_READY;}
@@ -171,7 +180,7 @@ void task_switch ( void ) //My Sheduler
 				(current_task->taskFunc)(); // starting function of task
 				while(start!=end)
 				{
-					if(start->taskState==TASK_RUNNING && start->taskFunc != my_idle_task)
+					if(start->taskState == TASK_RUNNING && start->taskFunc != my_idle_task)
 					{
 						start -> taskState = TASK_READY;
 						start -> taskSleep = 0;
@@ -202,13 +211,6 @@ void task_switch ( void ) //My Sheduler
 		return;
 	}
 }
-void my_idle_task ( void )
-{
-	uchar i = 0;
-	i++;
-	if(i>=255) i = 0;
-}
-
 /*
 Mini API for this task_manager
 */
@@ -249,7 +251,7 @@ base_t task_start (task_t * task_struct)
 	return OK;
 }
 
-uchar * task_name (task_t * task_struct)
+/*uchar * task_name (task_t * task_struct)
 {	
 	if(task_struct) 
 	{
@@ -259,7 +261,7 @@ uchar * task_name (task_t * task_struct)
 	{
 		return NULL;
 	}
-}
+}*/
 
 base_t task_sizestack (task_t * task_struct)
 {

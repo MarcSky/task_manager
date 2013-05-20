@@ -71,7 +71,6 @@ void task_start_sheld(void)
 	timer_start();  //start timer1
 	/*task_switch(); //go in sheduler
 	Task_RestoreContext(); //get context for task*/
-	
 }
 
 void task_yield ( void ) __attribute__ ( ( naked ) );
@@ -81,16 +80,17 @@ void task_yield ( void )
 	task_tick(); 
 	task_switch(); 
 	Task_RestoreContext();
-	ASM("ret"); //The output from the func
+	ASM("ret"); //The output from the function
 }
 
 ISR(TIMER1_COMPA_vect)
 {
-	base_t state_sheduler;
-	state_sheduler = sheduler_get_state();
+	base_t state_sheduler = 0;
+	state_sheduler = shedule_get_state();
 	if(state_sheduler)
 	{
 		task_yield();
 		//ASM("reti");//The output from the interrupt
 	}
+	ASM("reti");
 }

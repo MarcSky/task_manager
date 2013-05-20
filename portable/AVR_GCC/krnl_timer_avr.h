@@ -7,7 +7,7 @@ Author Gogohia Levan, 1995 year
 
 #ifndef KRNL_TIMER_AVR_H
 #define KRNL_TIMER_AVR_H
-#include "task_manager.h"
+//#include "task_manager.h"
 
 #define SYSTEM_FREQ 16000000UL
 #define TICK_FREQ 1000

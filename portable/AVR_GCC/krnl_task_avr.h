@@ -7,7 +7,8 @@ Author Gogohia Levan, 1995 year
 
 #ifndef KRNL_TASK_AVR_H
 #define KRNL_TASK_AVR_H
-#include  "kernel/sysmacro.h"
+#include "kernel/sysmacro.h"
+#include "kernel/task.h"
 
 #define ASM(x)		asm volatile(x);
 //! Status register define - map to 0x003F
@@ -23,6 +24,7 @@ Author Gogohia Levan, 1995 year
 #define PUSH_TO_STACK(x, y)		*x = y; x--;
 
 void task_start_sheld(void);
+//extern base_t shedule_get_state (void);
 void task_yield ( void ) __attribute__ ( ( naked ) );
 
 //---------------------------------------------------------------------------

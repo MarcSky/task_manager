@@ -8,6 +8,7 @@ Author Gogohia Levan, 1995 year
 #ifndef TASK_H
 #define TASK_H
 #include "sysmacro.h"
+//#include "krnl_task_avr.h"
 #define MAX_TASK_NAME 15
 #define MAX_TASK_SLEEP (uword)65535
 #define IDLE_TASK 0
@@ -28,7 +29,7 @@ typedef struct task_t
 	word *taskTopStack; //a pointer to the top of the stack
 	word *taskStack; //The stack pointer is determined by the task
 	byte taskSizeStack;//stack size
-	char taskName[MAX_TASK_NAME]; //name of task
+	//char taskName[MAX_TASK_NAME]; //name of task
 	//base_t taskPriority; //priority
 	func_p taskFunc; //function pointer
 	base_t taskState; //state task
@@ -44,8 +45,8 @@ typedef struct task_t
 void task_init ( void );
 void task_run (void);
 void task_ready (task_t * task_struct);
-base_t task_create(task_t * tast_struct, func_p func_task, char name[MAX_TASK_NAME], word * stack_point, byte size_stack);
-inline void task_tick( void ); //This function is enabled in the interrupt. It is necessary to count the ticks to interrupt for sleeping tasks
+base_t task_create(task_t * tast_struct, func_p func_task,  word * stack_point, byte size_stack);
+ void task_tick( void ); //This function is enabled in the interrupt. It is necessary to count the ticks to interrupt for sleeping tasks
 base_t task_sleep (uword time); //task_sleep
 base_t task_delete (task_t * task_struct);
 void task_switch ( void ); //My Sheduler
@@ -57,7 +58,7 @@ base_t task_count ( void );
 base_t task_pid (task_t * task_struct);
 base_t task_stop (task_t * task_struct);
 base_t task_start (task_t * task_struct);
-uchar * task_name (task_t * task_struct);
+//char * task_name (task_t * task_struct);
 base_t task_sizestack (task_t * task_struct);
 base_t task_state (task_t * task_struct);
 void shedule_set_state (base_t state);
