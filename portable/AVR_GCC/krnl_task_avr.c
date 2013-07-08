@@ -31,8 +31,8 @@ void task_initstack (task_t * task_struct)
 	}
 		
 	// 1st - push start address...
-	PUSH_TO_STACK(pucStack, (uchar)(usAddr & 0x00FF));
-	PUSH_TO_STACK(pucStack, (uchar)((usAddr >> 8) & 0x00FF));
+	PUSH_TO_STACK(pucStack, (uchar)(usAddr & 0x00FF)); // hi
+	PUSH_TO_STACK(pucStack, (uchar)((usAddr >> 8) & 0x00FF)); //low
 	
 	// 2nd - push R0
 	PUSH_TO_STACK(pucStack, 0x00);	// R0

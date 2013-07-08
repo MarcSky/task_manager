@@ -6,6 +6,9 @@ Author Gogohia Levan, 1995 year
 */
 
 #include "task.h"
+#include <stdlib.h>
+#include <string.h>
+#include "krnl_task_avr.h"
 //#include "portable/task_manager.h"
 //#include "portable/krnl_task_avr.h"
 //#include "portable/krnl_timer_avr.h"
@@ -23,31 +26,27 @@ typedef struct
 task_idle_s my_task;
 
 void my_idle_task ( void )
-{
+{ 
 	uchar i = 0;
-	i++;
-	if(i>=255) i = 0;
+	while(1)
+	{	
+		i++;
+		if(i>=255) i = 0;
+	}
 }
-
 
 extern task_t * current_task; //current_task
 task_t * head_task;           //head
 task_t * tail_task;			  //tail
 
-void task_init ( void )
-{
-	//reset all
-	current_task = NULL;
-	head_task = NULL;
-	tail_task  = NULL;
-}
-
 void task_run (void)
 {
 	CS_ENTER();
-	task_init();
+	current_task = NULL;
+	head_task = NULL;
+	tail_task  = NULL;
 	//The kernel must perform what ever task!
-	task_create(&(my_task.idle), my_idle_task, (word*)(my_task.stack), DEFAULT_STACK);
+	task_create(&(my_task.idle), my_idle_task, (char *)"idle", (unsigned char*)(my_task.stack), DEFAULT_STACK);
 	CS_EXIT();
 }
 
@@ -62,7 +61,7 @@ void task_ready (task_t * task_struct)
 	}
 }
 
-base_t task_create(task_t * now_task, func_p func_task, word * stack_point, byte size_stack)
+base_t task_create(task_t * now_task, func_p func_task, char * name, unsigned char * stack_point, byte size_stack)
 {
 	task_t * task_struct = now_task;
 	//Create a task! The main part of the manager! :D
@@ -72,11 +71,14 @@ base_t task_create(task_t * now_task, func_p func_task, word * stack_point, byte
 	
 	CS_ENTER(); //critical section start
 	
-/*	if(strlen(name) >= MAX_TASK_NAME) //The buffer overflow is bad!
+	if(strlen(name) >= MAX_TASK_NAME) //The buffer overflow is bad!
 	{
-		//task_struct -> taskName = name; //name
+		strncpy(task_struct->taskName, "Default_name", 12);
 	}
-	*/
+	else 
+	{
+		strncpy(task_struct->taskName, name, sizeof(name));
+	}
 	task_struct -> taskFunc = func_task; //func_task
 	task_struct -> taskPid = pid;        //pid
 	task_struct -> taskSizeStack = size_stack; //size_stack
@@ -108,13 +110,16 @@ void task_tick( void ) //This function is enabled in the interrupt. It is necess
 {
 	task_t * start = head_task;
 	task_t * end = tail_task;
-	while(start!=end)
+	while(start != end)
 	{
 		if(start -> taskState == TASK_SLEEP && start -> taskSleep !=0 )
 		{
 			start -> taskSleep--;
-			if(start->taskSleep == 0) {start->taskState = TASK_READY;}
-			start=start->next_task;
+			if(start -> taskSleep == 0) 
+			{
+				start->taskState = TASK_READY;
+			}
+			start = start -> next_task;
 		}
 	}
 }
@@ -134,8 +139,8 @@ base_t task_sleep (uword time) //task_sleep
 
 base_t task_delete (task_t * task_struct)
 {  
-	if(task_struct == NULL /*|| task_struct == task_idle_s*/) return BAD;
-	
+	if(task_struct == NULL /*|| task_struct == head_task*/) return BAD;
+	//else if (task_struct == )
 	CS_ENTER();
 	//delete task
 	task_t * prev;
@@ -151,36 +156,27 @@ base_t task_delete (task_t * task_struct)
 	return OK;
 }
 
+
 //I am a little unsure of the correct operation of the scheduler, but I think that it works well.
 void task_switch ( void ) //My Sheduler
 {
 	task_t * start = head_task;
 	task_t * end   = tail_task;
-		
+	CS_ENTER();
 	if(shedule)
 	{
-		if(start == NULL) //if we don't have task, for example, we did not create task_idle
-		{   
-			//This serious error
-			//for AVR i'm send in usart this string
-			//panic("task doesn't exist");
-			return;
-		}
 		if(start == end) //If we have only one task, example - task_idle or we went on all the tasks
 		{
-			if(pid == 1) 
+			if(task_count() == 1) 
 			{
-				current_task = start; //starting task_idle;
+				current_task = head_task; //starting task_idle;
 				(current_task->taskFunc)(); // starting function of task
 			}
 			else //if count of task > 1
 			{    //Begin to run on the tasks of the meat
-				start = head_task;
-				current_task = start;
-				(current_task->taskFunc)(); // starting function of task
-				while(start!=end)
+				while(start != end)
 				{
-					if(start->taskState == TASK_RUNNING && start->taskFunc != my_idle_task)
+					if(start -> taskState == TASK_RUNNING)
 					{
 						start -> taskState = TASK_READY;
 						start -> taskSleep = 0;
@@ -192,12 +188,14 @@ void task_switch ( void ) //My Sheduler
 		}
 		else //if we have > 1 task and we dont have end of task;
 		{
-			while(start!=end)
+			
+			start = current_task -> next_task;
+						
+			while(start != end)
 			{
-				if(start->taskState == TASK_READY && start -> taskFunc != my_idle_task)
+				if(start -> taskState == TASK_READY)
 				{
 					current_task = start;
-					start = start -> next_task;
 					current_task -> taskState = TASK_RUNNING;
 					(current_task->taskFunc)(); // starting function of task
 					//break;
@@ -205,11 +203,8 @@ void task_switch ( void ) //My Sheduler
 			}
 		}
 	}
-	else 
-	{
-		//panic("shedule offline");
-		return;
-	}
+	
+	CS_EXIT();
 }
 /*
 Mini API for this task_manager
@@ -226,13 +221,13 @@ base_t task_count ( void )
 
 base_t task_pid (task_t * task_struct) 
 {	//get number our proccess
-	if(task_struct == NULL) return BAD;
+	if(!task_struct) return BAD;
 	else return task_struct -> taskPid;
 }
 
 base_t task_stop (task_t * task_struct)
 {	//stop out task
-	if(task_struct == NULL) return BAD;
+	if(!task_struct) return BAD;
 	
 	CS_ENTER();
 		task_struct -> taskState = TASK_BLOCKED;
@@ -250,18 +245,6 @@ base_t task_start (task_t * task_struct)
 	
 	return OK;
 }
-
-/*uchar * task_name (task_t * task_struct)
-{	
-	if(task_struct) 
-	{
-		return task_struct -> taskName;
-	}
-	else
-	{
-		return NULL;
-	}
-}*/
 
 base_t task_sizestack (task_t * task_struct)
 {

@@ -8,6 +8,7 @@ Author Gogohia Levan, 1995 year
 #ifndef TASK_H
 #define TASK_H
 #include "sysmacro.h"
+
 //#include "krnl_task_avr.h"
 #define MAX_TASK_NAME 15
 #define MAX_TASK_SLEEP (uword)65535
@@ -19,17 +20,15 @@ typedef enum
 	TASK_RUNNING,
 	TASK_READY,
 	TASK_BLOCKED,
-	TASK_EXITING,
 	TASK_SLEEP,
-	TASK_DOEST_EXIST
 } TASK_STATUS;
 
 typedef struct task_t
 {	
 	word *taskTopStack; //a pointer to the top of the stack
-	word *taskStack; //The stack pointer is determined by the task
+	unsigned char *taskStack; //The stack pointer is determined by the task
 	byte taskSizeStack;//stack size
-	//char taskName[MAX_TASK_NAME]; //name of task
+	char taskName[MAX_TASK_NAME]; //name of task
 	//base_t taskPriority; //priority
 	func_p taskFunc; //function pointer
 	base_t taskState; //state task
@@ -42,10 +41,9 @@ typedef struct task_t
 
 
 /*Do not be afraid of the set of functions. He is very simple.*/
-void task_init ( void );
 void task_run (void);
 void task_ready (task_t * task_struct);
-base_t task_create(task_t * tast_struct, func_p func_task,  word * stack_point, byte size_stack);
+base_t task_create(task_t * tast_struct, func_p func_task, char * name,  unsigned char * stack_point, byte size_stack);
  void task_tick( void ); //This function is enabled in the interrupt. It is necessary to count the ticks to interrupt for sleeping tasks
 base_t task_sleep (uword time); //task_sleep
 base_t task_delete (task_t * task_struct);
